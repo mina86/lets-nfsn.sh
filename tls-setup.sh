@@ -80,14 +80,38 @@ then
 	return 10
 fi
 
+wk_dir=.well-known
+acme_dir=acme-challenge
+
 for Alias in `cat "${BASEDIR}/domains.txt"`
 do
 	if [ -d "/home/public/${Alias}" ]
 	then
-		if [ ! -h "/home/public/${Alias}/.well-known" ]
+		if [ -h "/home/public/$Alias/$wk_dir" ]
 		then
-			echo "Linking well-known for ${Alias}."
-			ln -s ../.well-known /home/public/${Alias}/.well-known
+			: Symlink already set up
+		elif [ ! -e "/home/public/$Alias/$wk_dir" ]
+		then
+			echo "Linking well-known for $Alias."
+			ln -s "../$wk_dir" "/home/public/$Alias/$wk_dir"
+		elif [ ! -d "/home/public/$Alias/$wk_dir" ]
+		then
+			echo "$Alias/$wk_dir exists but is not a (symbolic" \
+			     'link to a) directory; aborting'
+			# TODO: Should we ‘exit 1’?
+		elif [ -h "/home/public/$Alias/$wk_dir/$acme_dir" ]
+		then
+			: Symlink already set up
+		elif [ ! -e "/home/public/$Alias/$wk_dir/$acme_dir" ]
+		then
+			echo "Linking well-known/$acme_dir for $Alias."
+			ln -s "../../$wk_dir/$acme_dir" \
+			   "/home/public/$Alias/$wk_dir/$acme_dir"
+		elif [ ! -d "/home/public/$Alias/$wk_dir/$acme_dir" ]
+		then
+			echo "$Alias/$wk_dir/$acme_dir exists but is not a" \
+			     '(symbolic link to a) directory; aborting'
+			# TODO: Should we ‘exit 1’?
 		fi
 	fi
 	if [ "${Reinstall}" = "yes" ]
@@ -117,5 +141,3 @@ then
 	echo Adding scheduled task to renew certificates.
 	/usr/local/bin/nfsn add-cron tlssetup /usr/local/bin/tls-setup.sh me ssh '?' '*' '*'
 fi
-
-
